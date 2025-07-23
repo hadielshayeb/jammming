@@ -7,7 +7,7 @@ import PlayList from '../Playlist/Playlist';
 function App() {
   return (
     <div className="App">
-      <h1>Ja<span className="highlight">mm</span>ing</h1>
+      <h1>Ja<span className="highlight">mmm</span>ing</h1>
       <SearchBar />
       <div className="App-playlist">
         <SearchResults />
@@ -16,3 +16,5 @@ function App() {
     </div>
   );
 }
+
+export default App;
