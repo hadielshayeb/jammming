@@ -54,6 +54,22 @@ function App() {
     setPlaylistTracks((prevTracks) => [...prevTracks, track]);
   };
 
+  const removeTrack = (track) => {
+    setPlaylistTracks((prevTracks) => prevTracks.filter(savedTrack => savedTrack.id !== track.id));
+  };
+
+  const updatePlaylistName = (name) => {
+    setPlaylist(name);
+  };
+
+  const savePlaylist = () => {
+    const trackUris = playlistTracks.map(track => track.uri);
+    console.log("Saving playlist to Spotify with URIs:", trackUris);
+
+    setPlaylistName('New Playlist');
+    setPlaylistTracks([]);
+  };
+
   return (
     <div className="App">
       <h1>Ja<span className="highlight">mmm</span>ing</h1>
@@ -61,7 +77,13 @@ function App() {
       <div className="App-playlist">
         {/* Pass track data down to SearchResults */}
         <SearchResults tracks={searchResults} onAdd={addTrack} />
-        <Playlist playlistname={playlist} playlistTracks={playlistTracks} />
+        <Playlist 
+          playlistname={playlist} 
+          playlistTracks={playlistTracks} 
+          onRemove={removeTrack}
+          onNameChange={updatePlaylistName}
+          onSave={savePlaylist}
+        />
       </div>
     </div>
   );
