@@ -34,14 +34,14 @@ function App() {
     setPlaylistTracks([]);
   };
 
-  const search = (term) => {
-    Spotify.search(term).then(results => setSearchResults(results));
+  const searchSpotify = (term) => {
+    Spotify.search(term).then((tracks) => setSearchResults(tracks));
   };
 
   return (
     <div className="App">
       <h1>Ja<span className="highlight">mmm</span>ing</h1>
-      <SearchBar onSearch={search} />
+      <SearchBar onSearch={searchSpotify} />
       <div className="App-playlist">
         {/* Pass track data down to SearchResults */}
         <SearchResults tracks={searchResults} onAdd={addTrack} />

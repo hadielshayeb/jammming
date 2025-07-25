@@ -18,7 +18,10 @@ const Spotify = {
 
       // Clear the access token after it expires
       window.setTimeout(() => (accessToken = ''), expiresIn * 1000);
-      window.history.pushState('Access Token', null, '/');
+      
+      // Replace URL fragment without redirecting to homepage
+      window.history.pushState('Access Token', null, '/jammming');
+      
       return accessToken;
     } else {
       // Redirect user to Spotify for authorization
@@ -29,6 +32,8 @@ const Spotify = {
 
   async search(term) {
     const token = this.getAccessToken();
+    if (!token) return [];
+
     const response = await fetch(
       `https://api.spotify.com/v1/search?type=track&q=${term}`,
       {
