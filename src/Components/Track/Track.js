@@ -10,11 +10,14 @@ function Track({ track, isRemoval, onAdd, onRemove }) {
     onRemove(track);
   };
 
+  // Handle both old format (artist) and new format (artists array)
+  const artistDisplay = track.artists ? track.artists.join(', ') : track.artist;
+
   return (
     <div className="Track">
       <div className="Track-information">
         <h3>{track.name}</h3>
-        <p>{track.artist} | {track.album}</p>
+        <p>{artistDisplay} | {track.album}</p>
       </div>
       {isRemoval ? (
         <button className="Track-action" onClick={removeTrack}>-</button>
