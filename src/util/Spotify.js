@@ -2,8 +2,8 @@ let accessToken = "";
 const clientID = "36a164d40a9c4c128c60e1015c193db4";
 const redirectUrl = "https://hadielshayeb.github.io/jammming";
 
-const scope = 'user-read-private user-read-email';
-const authUrl = new URL("https://accounts.spotify.com/authorize")
+const scope = 'playlist-modify-public';
+const authUrl = new URL("https://accounts.spotify.com/authorize");
 const tokenEndpoint = "https://accounts.spotify.com/api/token";
 
 // PKCE: Generate Code Verifier
@@ -12,6 +12,7 @@ const generateRandomString = (length) => {
   const values = window.crypto.getRandomValues(new Uint8Array(length));
   return values.reduce((acc, x) => acc + possible[x % possible.length], "");
 };
+
 // a hashed version of codeVerifier will get sent with the authorization code to get the access token
 const codeVerifier = generateRandomString(64);
 localStorage.setItem("code_verifier", codeVerifier);
@@ -30,13 +31,19 @@ const base64encode = (input) => {
     .replace(/\//g, '_');
 };
 
+// Generate code challenge
+let codeChallenge = "";
+(async () => {
+  const hashed = await sha256(codeVerifier);
+  codeChallenge = base64encode(hashed);
+})();
 
 const Spotify = {
-  getAuthCode() {
+  async getAccessToken() {
     if (accessToken) return accessToken;
 
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get("code");
 
     if (code) {
       return Spotify.getToken(code).then(tokenResponse => {
@@ -47,39 +54,12 @@ const Spotify = {
       });
     }
 
-    const authURL = `https://accounts.spotify.com/authorize?client_id=${clientID}&response_type=code&redirect_uri=${redirectUrl}&scope=playlist-modify-public&code_challenge_method=S256&code_challenge=${codeChallenge}`;
+    // If no code, redirect to authorization
+    const authURL = `https://accounts.spotify.com/authorize?client_id=${clientID}&response_type=code&redirect_uri=${redirectUrl}&scope=${scope}&code_challenge_method=S256&code_challenge=${codeChallenge}`;
     window.location = authURL;
   },
 
-
   async getToken(code) {
-    if (accessToken) return accessToken;
-
-    const urlParams = new URLSearchParams(window.location.search);
-    code = urlParams.get("code");
-
-    let codeChallenge = "";
-    if (code) {
-      // Generate code challenge from verifier
-      // codeChallenge is a hashed version of codeVerifier (SHA-256 + base64).
-      (async () => {
-        const hashed = await sha256(codeVerifier);
-        codeChallenge = base64encode(hashed);
-      })();
-
-      const params = {
-        response_type: 'code',
-        client_id: clientID,
-        scope,
-        code_challenge_method: 'S256',
-        code_challenge: codeChallenge,
-        redirect_uri: redirectUrl,
-      }
-
-      authUrl.search = new URLSearchParams(params).toString();
-      window.location.href = authUrl.toString();
-    }
-
     const code_verifier = localStorage.getItem("code_verifier");
     const response = await fetch(tokenEndpoint, {
       method: "POST",
@@ -99,8 +79,8 @@ const Spotify = {
   },
 
   async search(term) {
-    const token = await Spotify.getToken();
-    console.log('token returned' + JSON.stringify(token));
+    const token = await Spotify.getAccessToken();
+    console.log('token returned: ' + token);
     return fetch(`https://api.spotify.com/v1/search?type=track&q=${term}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
