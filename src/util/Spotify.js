@@ -1,6 +1,6 @@
 let accessToken = "";
 const clientID = "36a164d40a9c4c128c60e1015c193db4";
-const redirectUrl = "https://hadielshayeb.github.io/jammming";
+const redirectUrl = "https://hadielshayeb.github.io/jammming/";
 
 const scope = 'playlist-modify-public';
 const authUrl = new URL("https://accounts.spotify.com/authorize");
@@ -36,18 +36,26 @@ let codeChallenge = "";
 const generateCodeChallenge = async () => {
   const hashed = await sha256(codeVerifier);
   codeChallenge = base64encode(hashed);
+  console.log('Code challenge generated:', codeChallenge);
   return codeChallenge;
 };
 
 const Spotify = {
   async getAccessToken() {
-    if (accessToken) return accessToken;
+    console.log('getAccessToken called');
+    if (accessToken) {
+      console.log('Using existing token');
+      return accessToken;
+    }
 
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get("code");
+    console.log('Authorization code from URL:', code);
 
     if (code) {
+      console.log('Exchanging code for token...');
       return Spotify.getToken(code).then(tokenResponse => {
+        console.log('Token response:', tokenResponse);
         accessToken = tokenResponse.access_token;
         window.setTimeout(() => accessToken = "", tokenResponse.expires_in * 1000);
         window.history.pushState({}, document.title, "/");
@@ -57,15 +65,21 @@ const Spotify = {
 
     // If no code, generate challenge and redirect to authorization
     if (!codeChallenge) {
+      console.log('Generating code challenge...');
       await generateCodeChallenge();
     }
     
+    console.log('Redirecting to Spotify authorization...');
     const authURL = `https://accounts.spotify.com/authorize?client_id=${clientID}&response_type=code&redirect_uri=${redirectUrl}&scope=${scope}&code_challenge_method=S256&code_challenge=${codeChallenge}`;
+    console.log('Auth URL:', authURL);
     window.location = authURL;
   },
 
   async getToken(code) {
+    console.log('getToken called with code:', code);
     const code_verifier = localStorage.getItem("code_verifier");
+    console.log('Code verifier from localStorage:', code_verifier);
+    
     const response = await fetch(tokenEndpoint, {
       method: "POST",
       headers: {
@@ -79,18 +93,32 @@ const Spotify = {
         code_verifier: code_verifier
       }),
     });
-    console.log('token returned');
-    return await response.json();
+    
+    console.log('Token response status:', response.status);
+    const tokenData = await response.json();
+    console.log('Token data:', tokenData);
+    return tokenData;
   },
 
   async search(term) {
+    console.log('Search called with term:', term);
     const token = await Spotify.getAccessToken();
-    console.log('token returned: ' + token);
+    console.log('Token for search:', token);
+    
+    if (!token) {
+      console.error('No token available for search');
+      return [];
+    }
+    
     return fetch(`https://api.spotify.com/v1/search?type=track&q=${term}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(res => res.json())
+      .then(res => {
+        console.log('Search response status:', res.status);
+        return res.json();
+      })
       .then(json => {
+        console.log('Search response:', json);
         if (!json.tracks) return [];
         return json.tracks.items.map(t => ({
           id: t.id,
@@ -99,6 +127,10 @@ const Spotify = {
           album: t.album.name,
           uri: t.uri,
         }));
+      })
+      .catch(error => {
+        console.error('Search error:', error);
+        return [];
       });
   },
 
