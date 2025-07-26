@@ -1,84 +1,53 @@
 let accessToken = "";
 const clientID = "36a164d40a9c4c128c60e1015c193db4";
-const redirectUrl = "https://hadielshayeb.github.io/jammming/";
+
+// Test different redirect URIs to see which one works
+const redirectUrls = [
+  "https://hadielshayeb.github.io/jammming",
+  "https://hadielshayeb.github.io/jammming/",
+  "http://localhost:3000",
+  "http://localhost:3000/"
+];
 
 const scope = 'playlist-modify-public';
 
-// PKCE: Generate Code Verifier
-const generateRandomString = (length) => {
-  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  const values = window.crypto.getRandomValues(new Uint8Array(length));
-  return values.reduce((acc, x) => acc + possible[x % possible.length], "");
-};
-
-const codeVerifier = generateRandomString(64);
-localStorage.setItem("code_verifier", codeVerifier);
-
-const sha256 = async (plain) => {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(plain);
-  return await window.crypto.subtle.digest("SHA-256", data);
-};
-
-const base64encode = (input) => {
-  return btoa(String.fromCharCode(...new Uint8Array(input)))
-    .replace(/=/g, '')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_');
-};
-
 const Spotify = {
-  async getAccessToken() {
+  getAccessToken() {
     if (accessToken) {
       return accessToken;
     }
 
+    // Check for access token in URL fragment (Implicit Grant)
+    const accessTokenMatch = window.location.hash.match(/access_token=([^&]*)/);
+    const expiresInMatch = window.location.hash.match(/expires_in=([^&]*)/);
+
+    if (accessTokenMatch && expiresInMatch) {
+      accessToken = accessTokenMatch[1];
+      const expiresIn = Number(expiresInMatch[1]);
+      window.setTimeout(() => accessToken = '', expiresIn * 1000);
+      window.history.pushState('AccessToken', null, '/');
+      return accessToken;
+    }
+
+    // Check for authorization code in URL (Authorization Code Flow)
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get("code");
 
     if (code) {
-      return Spotify.getToken(code);
+      // We have a code, but let's try Implicit Grant first since that's simpler
+      console.log("Found authorization code, but trying Implicit Grant first");
     }
 
-    // Generate code challenge
-    const hashed = await sha256(codeVerifier);
-    const codeChallenge = base64encode(hashed);
-    
-    // Redirect to authorization
-    const authURL = `https://accounts.spotify.com/authorize?client_id=${clientID}&response_type=code&redirect_uri=${encodeURIComponent(redirectUrl)}&scope=${encodeURIComponent(scope)}&code_challenge_method=S256&code_challenge=${codeChallenge}`;
-    window.location = authURL;
-  },
-
-  async getToken(code) {
-    const code_verifier = localStorage.getItem("code_verifier");
-    
-    const response = await fetch("https://accounts.spotify.com/api/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        client_id: clientID,
-        grant_type: "authorization_code",
-        code: code,
-        redirect_uri: redirectUrl,
-        code_verifier: code_verifier
-      }),
-    });
-    
-    const tokenData = await response.json();
-    accessToken = tokenData.access_token;
-    
-    if (tokenData.expires_in) {
-      window.setTimeout(() => accessToken = "", tokenData.expires_in * 1000);
-    }
-    
-    window.history.pushState({}, document.title, "/");
-    return accessToken;
+    // Try Implicit Grant Flow first (most common for client-side apps)
+    console.log("Trying Implicit Grant Flow...");
+    const redirectUrl = redirectUrls[0]; // Try without trailing slash first
+    const accessUrl = `https://accounts.spotify.com/authorize?client_id=${clientID}&response_type=token&scope=${encodeURIComponent(scope)}&redirect_uri=${encodeURIComponent(redirectUrl)}&show_dialog=true`;
+    console.log("Redirecting to:", accessUrl);
+    window.location.href = accessUrl;
   },
 
   async search(term) {
-    const token = await Spotify.getAccessToken();
+    const token = Spotify.getAccessToken();
     if (!token) {
       console.error('No access token available');
       return [];
@@ -121,7 +90,7 @@ const Spotify = {
       return;
     }
 
-    const token = await Spotify.getAccessToken();
+    const token = Spotify.getAccessToken();
     if (!token) {
       console.log('Access Token is missing.');
       return;
