@@ -31,12 +31,13 @@ const base64encode = (input) => {
     .replace(/\//g, '_');
 };
 
-// Generate code challenge
+// Generate code challenge synchronously
 let codeChallenge = "";
-(async () => {
+const generateCodeChallenge = async () => {
   const hashed = await sha256(codeVerifier);
   codeChallenge = base64encode(hashed);
-})();
+  return codeChallenge;
+};
 
 const Spotify = {
   async getAccessToken() {
@@ -54,7 +55,11 @@ const Spotify = {
       });
     }
 
-    // If no code, redirect to authorization
+    // If no code, generate challenge and redirect to authorization
+    if (!codeChallenge) {
+      await generateCodeChallenge();
+    }
+    
     const authURL = `https://accounts.spotify.com/authorize?client_id=${clientID}&response_type=code&redirect_uri=${redirectUrl}&scope=${scope}&code_challenge_method=S256&code_challenge=${codeChallenge}`;
     window.location = authURL;
   },
