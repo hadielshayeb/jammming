@@ -147,4 +147,4 @@ const Spotify = {
   },
 };
 
-export { Spotify };
+export default Spotify;
